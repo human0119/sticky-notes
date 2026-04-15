@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雲端便利貼</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; }
+  .toolbar { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 10px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; position: sticky; top: 0; z-index: 100; }
+  .toolbar-title { font-size: 16px; font-weight: 600; color: #333; flex: 1; min-width: 80px; }
+  .status { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #888; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; }
+  .dot.err { background: #f87171; }
+  .dot.loading { background: #fbbf24; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;}50%{opacity:.3;} }
+  .save-txt { font-size: 11px; color: #aaa; }
+  .color-row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .15s; outline-offset: 1px; }
+  .swatch:hover { transform: scale(1.2); }
+  .swatch.active { border-color: #333 !important; }
+  .tbtn { padding: 6px 14px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .tbtn:hover { background: #f5f5f5; }
+  .tbtn.active { background: #eee; }
+  .tbtn.primary { background: #333; color: #fff; border-color: #333; }
+  .tbtn.primary:hover { background: #555; }
+  .board { padding: 16px; }
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .note-card { border-radius: 2px 12px 12px 12px; padding: 12px; min-height: 155px; display: flex; flex-direction: column; border: 1px solid rgba(0,0,0,0.07); transition: box-shadow .15s; }
+  .note-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .note-textarea { background: transparent; border: none; outline: none; resize: none; font-size: 13px; line-height: 1.6; font-family: inherit; flex: 1; width: 100%; min-height: 80px; }
+  .note-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(0,0,0,0.07); }
+  .note-date { font-size: 10px; opacity: .5; }
+  .note-actions { display: flex; gap: 4px; }
+  .icon-btn { background: transparent; border: none; cursor: pointer; font-size: 14px; opacity: .35; padding: 0 2px; line-height: 1; }
+  .icon-btn:hover { opacity: .8; }
+  .reminder-tag { font-size: 10px; padding: 2px 6px; border-radius: 20px; background: rgba(0,0,0,0.07); margin-top: 3px; cursor: pointer; display: inline-block; }
+  .reminder-tag.soon { background: #fde68a; color: #78350f; }
+  .reminder-tag.overdue { background: #fca5a5; color: #7f1d1d; }
+  .empty { text-align: center; padding: 4rem 1rem; color: #aaa; font-size: 14px; }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: .4; }
+  .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+  .overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 1.25rem; width: 100%; max-width: 340px; }
+  .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+  .modal label { font-size: 12px; color: #666; display: block; margin-bottom: 3px; margin-top: 10px; }
+  .modal input { width: 100%; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; }
+  .modal input:focus { outline: none; border-color: #888; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 1rem; }
+  .modal-btns button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; font-size: 13px; font-family: inherit; background: #fff; }
+  .modal-btns .primary { background: #333; color: #fff; border-color: #333; }
+  .modal-btns .danger { color: #c00; }
+  .loading-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 300; gap: 12px; font-size: 14px; color: #888; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 480px) {
+    .notes-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .toolbar { padding: 8px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <span>連線 Firebase 中…</span>
+</div>
+
+<div class="toolbar">
+  <span class="toolbar-title">📝 便利貼</span>
+  <div class="status"><span class="dot loading" id="dot"></span><span id="statusTxt">連線中</span></div>
+  <span class="save-txt" id="saveTxt"></span>
+  <div class="color-row" id="colorRow"></div>
+  <button class="tbtn" id="filterBtn" onclick="toggleFilter()">全部</button>
+  <button class="tbtn primary" onclick="openAdd()">＋ 新增</button>
+</div>
+
+<div class="board">
+  <div class="notes-grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none;">
+    <div class="empty-icon">📝</div>
+    <div>按「＋ 新增」建立第一張便利貼</div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modalTitle">新增便利貼</h3>
+    <div id="textRow">
+      <label>內容（可新增後再輸入）</label>
+      <input type="text" id="modalText" placeholder="便利貼內容…" />
+    </div>
+    <label>提醒時間（選填）</label>
+    <input type="datetime-local" id="modalTime" />
+    <label>提醒標籤（選填）</label>
+    <input type="text" id="modalLabel" placeholder="例：開會、截止日期" />
+    <div class="modal-btns">
+      <button onclick="closeModal()">取消</button>
+      <button class="danger" id="clearBtn" onclick="clearReminder()" style="display:none;">清除提醒</button>
+      <button class="primary" onclick="saveModal()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDWvqp5BsPCHJbKzJlKVecg1I245Dh6Sxo",
+  authDomain: "sticky-notes-dbc67.firebaseapp.com",
+  projectId: "sticky-notes-dbc67",
+  storageBucket: "sticky-notes-dbc67.firebasestorage.app",
+  messagingSenderId: "543077650545",
+  appId: "1:543077650545:web:d7ca4aa32b57214ee28bd0"
+};
+
+const COLORS = [
+  {id:'yellow', bg:'#FFFDE7', dark:'#1a1400', corner:'#FDD835', label:'黃'},
+  {id:'orange', bg:'#FFF3E0', dark:'#2a1400', corner:'#FB8C00', label:'橘'},
+  {id:'red',    bg:'#FFEBEE', dark:'#2a0a0a', corner:'#E53935', label:'紅'},
+  {id:'pink',   bg:'#FCE4EC', dark:'#2a0a18', corner:'#E91E63', label:'粉'},
+  {id:'lpink',  bg:'#FFF0F5', dark:'#2a1020', corner:'#F48FB1', label:'淺粉'},
+  {id:'purple', bg:'#EDE7F6', dark:'#1a0a40', corner:'#7B1FA2', label:'紫'},
+  {id:'blue',   bg:'#E3F2FD', dark:'#042030', corner:'#1E88E5', label:'藍'},
+  {id:'lblue',  bg:'#F0F8FF', dark:'#041828', corner:'#90CAF9', label:'淺藍'},
+  {id:'green',  bg:'#E8F5E9', dark:'#042a10', corner:'#43A047', label:'綠'},
+  {id:'lgreen', bg:'#F1F8F2', dark:'#051a0a', corner:'#A5D6A7', label:'淺綠'},
+  {id:'lgray',  bg:'#F5F5F5', dark:'#1a1a1a', corner:'#BDBDBD', label:'淺灰'},
+  {id:'lyellow',bg:'#FAFBE8', dark:'#1a1a00', corner:'#E6EE9C', label:'淺黃'},
+];
+
+let notes = [];
+let currentColor = 'yellow';
+let filterActive = false;
+let editingId = null;
+let pendingAdd = false;
+let db, colRef;
+let checkTimer;
+
+function setStatus(s, txt) {
+  document.getElementById('dot').className = 'dot' + (s==='ok'?'':s==='err'?' err':' loading');
+  document.getElementById('statusTxt').textContent = txt;
+}
+
+function setSave(txt) { document.getElementById('saveTxt').textContent = txt; }
+
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  colRef = collection(db, 'notes');
+  const q = query(colRef, orderBy('createdAt', 'desc'));
+  onSnapshot(q, snap => {
+    notes = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    document.getElementById('loadingScreen').style.display = 'none';
+    setStatus('ok', 'Firebase 雲端');
+    render();
+  }, err => {
+    setStatus('err', '讀取失敗');
+    document.getElementById('loadingScreen').style.display = 'none';
+  });
+} catch(e) {
+  setStatus('err', '連線失敗');
+  document.getElementById('loadingScreen').style.display = 'none';
+}
+
+async function addNote(text, color, reminder, rlabel) {
+  const now = new Date();
+  const dateStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  setSave('儲存中…');
+  try {
+    await addDoc(colRef, { text: text||'', color: color||currentColor, date: dateStr, reminder: reminder||null, rlabel: rlabel||'', fired: false, createdAt: serverTimestamp() });
+    setSave('已儲存');
+  } catch(e) { setSave('儲存失敗'); }
+}
+
+async function updateNote(id, data) {
+  setSave('儲存中…');
+  try {
+    await updateDoc(doc(db, 'notes', id), data);
+    setSave('已儲存');
+  } catch(e) { setSave('儲存失敗'); }
+}
+
+async function deleteNote(id) {
+  setSave('刪除中…');
+  try {
+    await deleteDoc(doc(db, 'notes', id));
+    setSave('已刪除');
+  } catch(e) { setSave('刪除失敗'); }
+}
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function reminderClass(n) {
+  if (!n.reminder) return '';
+  const diff = new Date(n.reminder).getTime() - Date.now();
+  if (n.fired || diff < 0) return 'overdue';
+  if (diff < 3600000) return 'soon';
+  return '';
+}
+
+function checkReminders() {
+  const now = Date.now();
+  notes.forEach(n => {
+    if (n.reminder && !n.fired && now >= new Date(n.reminder).getTime()) {
+      updateNote(n.id, {fired: true});
+      if (Notification && Notification.permission === 'granted') {
+        new Notification('便利貼提醒', {body: (n.rlabel ? n.rlabel+'\n' : '') + (n.text||'').slice(0,80)});
+      }
+    }
+  });
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  const show = filterActive ? notes.filter(n => n.reminder) : notes;
+  empty.style.display = show.length ? 'none' : 'block';
+  grid.innerHTML = '';
+  show.forEach(note => {
+    const c = COLORS.find(c => c.id === note.color) || COLORS[0];
+    const rc = reminderClass(note);
+    const rf = fmtTime(note.reminder);
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    card.style.background = c.bg;
+    card.style.color = c.dark;
+    card.innerHTML = `
+      <textarea class="note-textarea" placeholder="寫點什麼…" style="color:${c.dark};">${note.text||''}</textarea>
+      <div class="note-footer">
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+          <span class="note-date">${note.date||''}</span>
+          ${rf ? `<span class="reminder-tag ${rc}" onclick="window._editReminder('${note.id}')">⏰ ${(note.rlabel?note.rlabel+' ':'')+rf}</span>` : ''}
+        </div>
+        <div class="note-actions">
+          <button class="icon-btn" title="設定提醒" onclick="window._editReminder('${note.id}')">⏰</button>
+          <button class="icon-btn" title="刪除" onclick="window._deleteNote('${note.id}')">✕</button>
+        </div>
+      </div>`;
+    let saveTimer;
+    card.querySelector('textarea').addEventListener('input', e => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => updateNote(note.id, {text: e.target.value}), 800);
+    });
+    grid.appendChild(card);
+  });
+}
+
+window._deleteNote = id => { if(confirm('確定刪除？')) deleteNote(id); };
+window._editReminder = id => openEdit(id);
+
+function buildPicker() {
+  const row = document.getElementById('colorRow');
+  COLORS.forEach(c => {
+    const b = document.createElement('div');
+    b.className = 'swatch' + (c.id===currentColor?' active':'');
+    b.style.background = c.bg;
+    b.style.outline = `1.5px solid ${c.corner}`;
+    b.style.borderColor = c.id===currentColor ? c.corner : 'transparent';
+    b.title = c.label;
+    b.onclick = () => {
+      currentColor = c.id;
+      document.querySelectorAll('.swatch').forEach((el,i) => {
+        el.classList.toggle('active', COLORS[i].id===currentColor);
+        el.style.borderColor = COLORS[i].id===currentColor ? COLORS[i].corner : 'transparent';
+      });
+    };
+    row.appendChild(b);
+  });
+}
+
+window.toggleFilter = () => {
+  filterActive = !filterActive;
+  const btn = document.getElementById('filterBtn');
+  btn.textContent = filterActive ? '只看提醒' : '全部';
+  btn.classList.toggle('active', filterActive);
+  render();
+};
+
+window.openAdd = () => {
+  pendingAdd = true; editingId = null;
+  document.getElementById('modalTitle').textContent = '新增便利貼';
+  document.getElementById('modalText').value = '';
+  document.getElementById('modalTime').value = '';
+  document.getElementById('modalLabel').value = '';
+  document.getElementById('textRow').style.display = '';
+  document.getElementById('clearBtn').style.display = 'none';
+  document.getElementById('overlay').classList.add('show');
+  if (Notification && Notification.permission==='default') Notification.requestPermission();
+};
+
+function openEdit(id) {
+  pendingAdd = false; editingId = id;
+  const n = notes.find(n=>n.id===id);
+  document.getElementById('modalTitle').textContent = '設定提醒';
+  document.getElementById('textRow').style.display = 'none';
+  document.getElementById('modalTime').value = n&&n.reminder ? n.reminder.slice(0,16) : '';
+  document.getElementById('modalLabel').value = n&&n.rlabel ? n.rlabel : '';
+  document.getElementById('clearBtn').style.display = n&&n.reminder ? '' : 'none';
+  document.getElementById('overlay').classList.add('show');
+}
+
+window.closeModal = () => {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('textRow').style.display = '';
+  pendingAdd = false; editingId = null;
+};
+
+window.saveModal = async () => {
+  const t = document.getElementById('modalTime').value;
+  const lbl = document.getElementById('modalLabel').value.trim();
+  if (pendingAdd) {
+    const txt = document.getElementById('modalText').value.trim();
+    await addNote(txt, currentColor, t||null, lbl);
+  } else if (editingId) {
+    await updateNote(editingId, {reminder: t||null, rlabel: lbl, fired: false});
+  }
+  closeModal();
+};
+
+window.clearReminder = async () => {
+  if (editingId) await updateNote(editingId, {reminder: null, rlabel: '', fired: false});
+  closeModal();
+};
+
+document.getElementById('overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+buildPicker();
+checkTimer = setInterval(checkReminders, 30000);
+</script>
+</body>
+</html>
