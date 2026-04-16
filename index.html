@@ -5,58 +5,131 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>雲端便利貼</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; }
-  .toolbar { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 10px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; position: sticky; top: 0; z-index: 100; }
-  .toolbar-title { font-size: 16px; font-weight: 600; color: #333; flex: 1; min-width: 80px; }
-  .status { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #888; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; }
-  .dot.err { background: #f87171; }
-  .dot.loading { background: #fbbf24; animation: blink 1s infinite; }
-  @keyframes blink { 0%,100%{opacity:1;}50%{opacity:.3;} }
-  .save-txt { font-size: 11px; color: #aaa; }
-  .color-row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-  .swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .15s; outline-offset: 1px; }
-  .swatch:hover { transform: scale(1.2); }
-  .swatch.active { border-color: #333 !important; }
-  .tbtn { padding: 6px 14px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px; cursor: pointer; white-space: nowrap; }
-  .tbtn:hover { background: #f5f5f5; }
-  .tbtn.active { background: #eee; }
-  .tbtn.primary { background: #333; color: #fff; border-color: #333; }
-  .tbtn.primary:hover { background: #555; }
-  .board { padding: 16px; }
-  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
-  .note-card { border-radius: 2px 12px 12px 12px; padding: 12px; min-height: 155px; display: flex; flex-direction: column; border: 1px solid rgba(0,0,0,0.07); transition: box-shadow .15s; }
-  .note-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-  .note-textarea { background: transparent; border: none; outline: none; resize: none; font-size: 13px; line-height: 1.6; font-family: inherit; flex: 1; width: 100%; min-height: 80px; }
-  .note-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(0,0,0,0.07); }
-  .note-date { font-size: 10px; opacity: .5; }
-  .note-actions { display: flex; gap: 4px; }
-  .icon-btn { background: transparent; border: none; cursor: pointer; font-size: 14px; opacity: .35; padding: 0 2px; line-height: 1; }
-  .icon-btn:hover { opacity: .8; }
-  .reminder-tag { font-size: 10px; padding: 2px 6px; border-radius: 20px; background: rgba(0,0,0,0.07); margin-top: 3px; cursor: pointer; display: inline-block; }
-  .reminder-tag.soon { background: #fde68a; color: #78350f; }
-  .reminder-tag.overdue { background: #fca5a5; color: #7f1d1d; }
-  .empty { text-align: center; padding: 4rem 1rem; color: #aaa; font-size: 14px; }
-  .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: .4; }
-  .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
-  .overlay.show { display: flex; }
-  .modal { background: #fff; border-radius: 14px; padding: 1.25rem; width: 100%; max-width: 340px; }
-  .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
-  .modal label { font-size: 12px; color: #666; display: block; margin-bottom: 3px; margin-top: 10px; }
-  .modal input { width: 100%; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; }
-  .modal input:focus { outline: none; border-color: #888; }
-  .modal-btns { display: flex; gap: 8px; margin-top: 1rem; }
-  .modal-btns button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; font-size: 13px; font-family: inherit; background: #fff; }
-  .modal-btns .primary { background: #333; color: #fff; border-color: #333; }
-  .modal-btns .danger { color: #c00; }
-  .loading-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 300; gap: 12px; font-size: 14px; color: #888; }
-  .spinner { width: 32px; height: 32px; border: 3px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin .8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @media (max-width: 480px) {
-    .notes-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-    .toolbar { padding: 8px 12px; }
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #eceef0; min-height: 100vh; overflow: hidden; }
+
+/* toolbar */
+.toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: #fff; border-bottom: 1px solid #ddd;
+  padding: 8px 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.toolbar-title { font-size: 15px; font-weight: 600; color: #333; }
+.status { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #888; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; }
+.dot.err { background: #f87171; }
+.dot.loading { background: #fbbf24; animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+.save-txt { font-size: 11px; color: #aaa; }
+.swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; transition: transform .15s; }
+.swatch:hover { transform: scale(1.2); }
+.swatch.active { border-color: #333 !important; }
+.tbtn { padding: 5px 12px; border-radius: 7px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.tbtn:hover { background: #f5f5f5; }
+.tbtn.active { background: #eee; }
+.tbtn.primary { background: #333; color: #fff; border-color: #333; }
+.tbtn.primary:hover { background: #555; }
+.spacer { flex: 1; }
+
+/* board */
+.board {
+  position: fixed; top: 52px; left: 0; right: 0; bottom: 0;
+  overflow: auto;
+}
+.board-inner {
+  position: relative;
+  width: 3000px; height: 2000px;
+}
+
+/* note */
+.note {
+  position: absolute;
+  min-width: 120px; min-height: 100px;
+  border-radius: 2px 12px 12px 12px;
+  display: flex; flex-direction: column;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 2px 3px 10px rgba(0,0,0,0.08);
+  transition: box-shadow .15s;
+  user-select: none;
+}
+.note:hover { box-shadow: 3px 5px 16px rgba(0,0,0,0.13); }
+.note.dragging { box-shadow: 6px 8px 24px rgba(0,0,0,0.2); opacity: .92; z-index: 500 !important; }
+.note.resizing { z-index: 500 !important; }
+
+.note-header {
+  height: 24px; cursor: grab; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 6px; border-radius: 2px 12px 0 0;
+  background: rgba(0,0,0,0.05);
+}
+.note-header:active { cursor: grabbing; }
+.note-header-actions { display: flex; gap: 3px; }
+.hbtn { background: transparent; border: none; cursor: pointer; font-size: 12px; opacity: .4; padding: 0 2px; line-height: 1; }
+.hbtn:hover { opacity: .8; }
+
+.note-body { flex: 1; display: flex; flex-direction: column; padding: 8px; overflow: hidden; }
+.note-textarea {
+  background: transparent; border: none; outline: none;
+  resize: none; font-family: inherit; flex: 1; width: 100%;
+  line-height: 1.55; overflow: hidden; cursor: text;
+}
+
+.note-footer {
+  padding: 4px 8px 6px; flex-shrink: 0;
+  border-top: 1px solid rgba(0,0,0,0.07);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.note-date { font-size: 9px; opacity: .45; }
+.reminder-tag { font-size: 10px; padding: 1px 6px; border-radius: 20px; background: rgba(0,0,0,0.07); cursor: pointer; }
+.reminder-tag.soon { background: #fde68a; color: #78350f; }
+.reminder-tag.overdue { background: #fca5a5; color: #7f1d1d; }
+
+/* resize handle */
+.resize-handle {
+  position: absolute; bottom: 0; right: 0;
+  width: 16px; height: 16px; cursor: se-resize;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  padding: 3px;
+}
+.resize-handle svg { opacity: .3; }
+.note:hover .resize-handle svg { opacity: .6; }
+
+/* empty hint */
+.empty-hint {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center; color: #bbb; pointer-events: none;
+}
+.empty-hint .icon { font-size: 48px; margin-bottom: 10px; }
+.empty-hint p { font-size: 14px; }
+
+/* overlay / modal */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 2000;
+  align-items: center; justify-content: center; padding: 1rem;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: #fff; border-radius: 14px; padding: 1.25rem;
+  width: 100%; max-width: 320px;
+}
+.modal h3 { font-size: 15px; font-weight: 600; margin-bottom: .75rem; }
+.modal label { font-size: 12px; color: #666; display: block; margin-bottom: 3px; margin-top: 9px; }
+.modal input { width: 100%; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; }
+.modal input:focus { outline: none; border-color: #999; }
+.modal-btns { display: flex; gap: 8px; margin-top: 1rem; }
+.modal-btns button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; font-size: 13px; font-family: inherit; background: #fff; }
+.modal-btns .primary { background: #333; color: #fff; border-color: #333; }
+.modal-btns .danger { color: #c00; }
+
+.loading-screen {
+  position: fixed; inset: 0; background: #eceef0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 3000; gap: 12px; font-size: 14px; color: #888;
+}
+.spinner { width: 32px; height: 32px; border: 3px solid #eee; border-top-color: #888; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -70,17 +143,19 @@
   <span class="toolbar-title">📝 便利貼</span>
   <div class="status"><span class="dot loading" id="dot"></span><span id="statusTxt">連線中</span></div>
   <span class="save-txt" id="saveTxt"></span>
-  <div class="color-row" id="colorRow"></div>
+  <div id="colorRow" style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;max-width:280px;"></div>
   <button class="tbtn" id="filterBtn" onclick="toggleFilter()">全部</button>
+  <button class="tbtn" onclick="resetView()">重置視圖</button>
   <button class="tbtn primary" onclick="openAdd()">＋ 新增</button>
 </div>
 
-<div class="board">
-  <div class="notes-grid" id="grid"></div>
-  <div class="empty" id="empty" style="display:none;">
-    <div class="empty-icon">📝</div>
-    <div>按「＋ 新增」建立第一張便利貼</div>
-  </div>
+<div class="board" id="board">
+  <div class="board-inner" id="boardInner"></div>
+</div>
+
+<div class="empty-hint" id="emptyHint">
+  <div class="icon">📝</div>
+  <p>按「＋ 新增」建立便利貼</p>
 </div>
 
 <div class="overlay" id="overlay">
@@ -104,7 +179,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDWvqp5BsPCHJbKzJlKVecg1I245Dh6Sxo",
@@ -136,129 +212,227 @@ let filterActive = false;
 let editingId = null;
 let pendingAdd = false;
 let db, colRef;
-let checkTimer;
+let maxZ = 10;
 
+// --- Firebase ---
 function setStatus(s, txt) {
-  document.getElementById('dot').className = 'dot' + (s==='ok'?'':s==='err'?' err':' loading');
+  document.getElementById('dot').className = 'dot'+(s==='ok'?'':s==='err'?' err':' loading');
   document.getElementById('statusTxt').textContent = txt;
 }
-
 function setSave(txt) { document.getElementById('saveTxt').textContent = txt; }
 
 try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   colRef = collection(db, 'notes');
-  const q = query(colRef, orderBy('createdAt', 'desc'));
+  const q = query(colRef, orderBy('createdAt','desc'));
   onSnapshot(q, snap => {
-    notes = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    notes = snap.docs.map(d => ({id:d.id, ...d.data()}));
     document.getElementById('loadingScreen').style.display = 'none';
-    setStatus('ok', 'Firebase 雲端');
-    render();
-  }, err => {
-    setStatus('err', '讀取失敗');
+    setStatus('ok','Firebase 雲端');
+    renderAll();
+  }, () => {
+    setStatus('err','讀取失敗');
     document.getElementById('loadingScreen').style.display = 'none';
   });
 } catch(e) {
-  setStatus('err', '連線失敗');
+  setStatus('err','連線失敗');
   document.getElementById('loadingScreen').style.display = 'none';
 }
 
-async function addNote(text, color, reminder, rlabel) {
-  const now = new Date();
-  const dateStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+async function fbAdd(data) {
   setSave('儲存中…');
-  try {
-    await addDoc(colRef, { text: text||'', color: color||currentColor, date: dateStr, reminder: reminder||null, rlabel: rlabel||'', fired: false, createdAt: serverTimestamp() });
-    setSave('已儲存');
-  } catch(e) { setSave('儲存失敗'); }
+  try { await addDoc(colRef, {...data, createdAt: serverTimestamp()}); setSave('已儲存'); }
+  catch(e) { setSave('儲存失敗'); }
 }
-
-async function updateNote(id, data) {
+async function fbUpdate(id, data) {
   setSave('儲存中…');
-  try {
-    await updateDoc(doc(db, 'notes', id), data);
-    setSave('已儲存');
-  } catch(e) { setSave('儲存失敗'); }
+  try { await updateDoc(doc(db,'notes',id), data); setSave('已儲存'); }
+  catch(e) { setSave('儲存失敗'); }
 }
-
-async function deleteNote(id) {
+async function fbDelete(id) {
   setSave('刪除中…');
-  try {
-    await deleteDoc(doc(db, 'notes', id));
-    setSave('已刪除');
-  } catch(e) { setSave('刪除失敗'); }
+  try { await deleteDoc(doc(db,'notes',id)); setSave('已刪除'); }
+  catch(e) { setSave('儲存失敗'); }
 }
 
+// --- Render ---
 function fmtTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
-
 function reminderClass(n) {
   if (!n.reminder) return '';
   const diff = new Date(n.reminder).getTime() - Date.now();
-  if (n.fired || diff < 0) return 'overdue';
-  if (diff < 3600000) return 'soon';
+  if (n.fired||diff<0) return 'overdue';
+  if (diff<3600000) return 'soon';
   return '';
 }
 
-function checkReminders() {
-  const now = Date.now();
-  notes.forEach(n => {
-    if (n.reminder && !n.fired && now >= new Date(n.reminder).getTime()) {
-      updateNote(n.id, {fired: true});
-      if (Notification && Notification.permission === 'granted') {
-        new Notification('便利貼提醒', {body: (n.rlabel ? n.rlabel+'\n' : '') + (n.text||'').slice(0,80)});
-      }
-    }
-  });
+function calcFontSize(w, h) {
+  const area = w * h;
+  const size = Math.sqrt(area) / 14;
+  return Math.min(22, Math.max(10, size));
 }
 
-function render() {
-  const grid = document.getElementById('grid');
-  const empty = document.getElementById('empty');
-  const show = filterActive ? notes.filter(n => n.reminder) : notes;
-  empty.style.display = show.length ? 'none' : 'block';
-  grid.innerHTML = '';
+function renderAll() {
+  const inner = document.getElementById('boardInner');
+  const show = filterActive ? notes.filter(n=>n.reminder) : notes;
+  document.getElementById('emptyHint').style.display = show.length ? 'none' : 'block';
+
+  // remove notes not in show
+  inner.querySelectorAll('.note').forEach(el => {
+    if (!show.find(n=>n.id===el.dataset.id)) el.remove();
+  });
+
   show.forEach(note => {
-    const c = COLORS.find(c => c.id === note.color) || COLORS[0];
-    const rc = reminderClass(note);
-    const rf = fmtTime(note.reminder);
-    const card = document.createElement('div');
-    card.className = 'note-card';
-    card.style.background = c.bg;
-    card.style.color = c.dark;
-    card.innerHTML = `
-      <textarea class="note-textarea" placeholder="寫點什麼…" style="color:${c.dark};">${note.text||''}</textarea>
-      <div class="note-footer">
-        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
-          <span class="note-date">${note.date||''}</span>
-          ${rf ? `<span class="reminder-tag ${rc}" onclick="window._editReminder('${note.id}')">⏰ ${(note.rlabel?note.rlabel+' ':'')+rf}</span>` : ''}
-        </div>
-        <div class="note-actions">
-          <button class="icon-btn" title="設定提醒" onclick="window._editReminder('${note.id}')">⏰</button>
-          <button class="icon-btn" title="刪除" onclick="window._deleteNote('${note.id}')">✕</button>
-        </div>
-      </div>`;
-    let saveTimer;
-    card.querySelector('textarea').addEventListener('input', e => {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => updateNote(note.id, {text: e.target.value}), 800);
-    });
-    grid.appendChild(card);
+    let el = inner.querySelector(`.note[data-id="${note.id}"]`);
+    if (!el) {
+      el = createNoteEl(note);
+      inner.appendChild(el);
+    }
+    updateNoteEl(el, note);
   });
 }
 
-window._deleteNote = id => { if(confirm('確定刪除？')) deleteNote(id); };
-window._editReminder = id => openEdit(id);
+function createNoteEl(note) {
+  const el = document.createElement('div');
+  el.className = 'note';
+  el.dataset.id = note.id;
+  el.innerHTML = `
+    <div class="note-header">
+      <div class="note-header-actions">
+        <button class="hbtn" title="提醒" onclick="window._openReminder('${note.id}')">⏰</button>
+        <button class="hbtn" title="刪除" onclick="window._del('${note.id}')">✕</button>
+      </div>
+    </div>
+    <div class="note-body">
+      <textarea class="note-textarea" placeholder="寫點什麼…"></textarea>
+    </div>
+    <div class="note-footer">
+      <span class="note-date"></span>
+      <span class="reminder-tag" style="display:none;"></span>
+    </div>
+    <div class="resize-handle">
+      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M9 1L1 9M6 1L1 6M9 4L4 9" stroke="#333" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>`;
 
+  // textarea save
+  let saveTimer;
+  el.querySelector('textarea').addEventListener('input', e => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => fbUpdate(note.id, {text: e.target.value}), 700);
+  });
+  el.querySelector('textarea').addEventListener('mousedown', e => e.stopPropagation());
+
+  // drag
+  el.querySelector('.note-header').addEventListener('mousedown', e => startDrag(e, el, note));
+
+  // resize
+  el.querySelector('.resize-handle').addEventListener('mousedown', e => startResize(e, el, note));
+
+  return el;
+}
+
+function updateNoteEl(el, note) {
+  const c = COLORS.find(c=>c.id===note.color)||COLORS[0];
+  const w = note.w || 200;
+  const h = note.h || 180;
+  const x = note.x || 80;
+  const y = note.y || 80;
+  const z = note.z || 1;
+  const fs = calcFontSize(w, h);
+
+  el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};background:${c.bg};color:${c.dark};`;
+  el.querySelector('.note-header').style.background = 'rgba(0,0,0,0.05)';
+
+  const ta = el.querySelector('textarea');
+  if (document.activeElement !== ta) ta.value = note.text||'';
+  ta.style.fontSize = fs+'px';
+  ta.style.color = c.dark;
+
+  el.querySelector('.note-date').textContent = note.date||'';
+
+  const rt = el.querySelector('.reminder-tag');
+  const rf = fmtTime(note.reminder);
+  if (rf) {
+    rt.style.display = '';
+    rt.className = 'reminder-tag '+(reminderClass(note));
+    rt.textContent = '⏰ '+(note.rlabel?note.rlabel+' ':'')+rf;
+    rt.onclick = () => window._openReminder(note.id);
+  } else {
+    rt.style.display = 'none';
+  }
+}
+
+// --- Drag ---
+function bringToFront(el, note) {
+  maxZ++;
+  el.style.zIndex = maxZ;
+  fbUpdate(note.id, {z: maxZ});
+}
+
+function startDrag(e, el, note) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  bringToFront(el, note);
+  el.classList.add('dragging');
+  const startX = e.clientX - (note.x||80);
+  const startY = e.clientY - (note.y||80);
+
+  function onMove(e) {
+    const nx = Math.max(0, e.clientX - startX);
+    const ny = Math.max(0, e.clientY - startY);
+    el.style.left = nx+'px';
+    el.style.top = ny+'px';
+    note.x = nx; note.y = ny;
+  }
+  function onUp() {
+    el.classList.remove('dragging');
+    fbUpdate(note.id, {x: note.x, y: note.y});
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// --- Resize ---
+function startResize(e, el, note) {
+  e.preventDefault();
+  e.stopPropagation();
+  bringToFront(el, note);
+  el.classList.add('resizing');
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const startW = note.w||200;
+  const startH = note.h||180;
+
+  function onMove(e) {
+    const nw = Math.max(120, startW + e.clientX - startX);
+    const nh = Math.max(100, startH + e.clientY - startY);
+    el.style.width = nw+'px';
+    el.style.height = nh+'px';
+    el.querySelector('textarea').style.fontSize = calcFontSize(nw,nh)+'px';
+    note.w = nw; note.h = nh;
+  }
+  function onUp() {
+    el.classList.remove('resizing');
+    fbUpdate(note.id, {w: note.w, h: note.h});
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// --- Toolbar ---
 function buildPicker() {
   const row = document.getElementById('colorRow');
   COLORS.forEach(c => {
     const b = document.createElement('div');
-    b.className = 'swatch' + (c.id===currentColor?' active':'');
+    b.className = 'swatch'+(c.id===currentColor?' active':'');
     b.style.background = c.bg;
     b.style.outline = `1.5px solid ${c.corner}`;
     b.style.borderColor = c.id===currentColor ? c.corner : 'transparent';
@@ -279,8 +453,20 @@ window.toggleFilter = () => {
   const btn = document.getElementById('filterBtn');
   btn.textContent = filterActive ? '只看提醒' : '全部';
   btn.classList.toggle('active', filterActive);
-  render();
+  renderAll();
 };
+
+window.resetView = () => {
+  document.getElementById('board').scrollTo({top:0, left:0, behavior:'smooth'});
+};
+
+// find free spot
+function findFreeSpot() {
+  const board = document.getElementById('board');
+  const sx = board.scrollLeft + 40;
+  const sy = board.scrollTop + 20;
+  return { x: sx + Math.floor(Math.random()*200), y: sy + Math.floor(Math.random()*100) };
+}
 
 window.openAdd = () => {
   pendingAdd = true; editingId = null;
@@ -294,16 +480,18 @@ window.openAdd = () => {
   if (Notification && Notification.permission==='default') Notification.requestPermission();
 };
 
-function openEdit(id) {
+window._openReminder = id => {
   pendingAdd = false; editingId = id;
   const n = notes.find(n=>n.id===id);
   document.getElementById('modalTitle').textContent = '設定提醒';
   document.getElementById('textRow').style.display = 'none';
   document.getElementById('modalTime').value = n&&n.reminder ? n.reminder.slice(0,16) : '';
-  document.getElementById('modalLabel').value = n&&n.rlabel ? n.rlabel : '';
+  document.getElementById('modalLabel').value = n&&n.rlabel||'';
   document.getElementById('clearBtn').style.display = n&&n.reminder ? '' : 'none';
   document.getElementById('overlay').classList.add('show');
-}
+};
+
+window._del = id => { if(confirm('確定刪除？')) fbDelete(id); };
 
 window.closeModal = () => {
   document.getElementById('overlay').classList.remove('show');
@@ -316,22 +504,37 @@ window.saveModal = async () => {
   const lbl = document.getElementById('modalLabel').value.trim();
   if (pendingAdd) {
     const txt = document.getElementById('modalText').value.trim();
-    await addNote(txt, currentColor, t||null, lbl);
+    const now = new Date();
+    const ds = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const pos = findFreeSpot();
+    maxZ++;
+    await fbAdd({ text:txt, color:currentColor, date:ds, reminder:t||null, rlabel:lbl, fired:false, x:pos.x, y:pos.y, w:200, h:180, z:maxZ });
   } else if (editingId) {
-    await updateNote(editingId, {reminder: t||null, rlabel: lbl, fired: false});
+    await fbUpdate(editingId, {reminder:t||null, rlabel:lbl, fired:false});
   }
   closeModal();
 };
 
 window.clearReminder = async () => {
-  if (editingId) await updateNote(editingId, {reminder: null, rlabel: '', fired: false});
+  if (editingId) await fbUpdate(editingId, {reminder:null, rlabel:'', fired:false});
   closeModal();
 };
 
 document.getElementById('overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
+// reminder check
+setInterval(() => {
+  const now = Date.now();
+  notes.forEach(n => {
+    if (n.reminder && !n.fired && now >= new Date(n.reminder).getTime()) {
+      fbUpdate(n.id, {fired:true});
+      if (Notification && Notification.permission==='granted')
+        new Notification('便利貼提醒', {body:(n.rlabel?n.rlabel+'\n':'')+(n.text||'').slice(0,80)});
+    }
+  });
+}, 30000);
+
 buildPicker();
-checkTimer = setInterval(checkReminders, 30000);
 </script>
 </body>
 </html>
