@@ -166,7 +166,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <input type="text" id="modalText" placeholder="便利貼內容…" />
     </div>
     <label>提醒時間（選填）</label>
-    <input type="datetime-local" id="modalTime" />
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <input type="date" id="modalDate" style="flex:1;min-width:110px;font-size:13px;padding:7px 8px;border-radius:8px;border:1px solid #ddd;font-family:inherit;" />
+      <select id="modalHour" style="width:64px;font-size:13px;padding:7px 6px;border-radius:8px;border:1px solid #ddd;font-family:inherit;background:#fff;"></select>
+      <span style="font-size:13px;color:#666;">:</span>
+      <select id="modalMin" style="width:64px;font-size:13px;padding:7px 6px;border-radius:8px;border:1px solid #ddd;font-family:inherit;background:#fff;"></select>
+    </div>
     <label>提醒標籤（選填）</label>
     <input type="text" id="modalLabel" placeholder="例：開會、截止日期" />
     <div class="modal-btns">
@@ -472,7 +477,7 @@ window.openAdd = () => {
   pendingAdd = true; editingId = null;
   document.getElementById('modalTitle').textContent = '新增便利貼';
   document.getElementById('modalText').value = '';
-  document.getElementById('modalTime').value = '';
+  setReminderValue(null);
   document.getElementById('modalLabel').value = '';
   document.getElementById('textRow').style.display = '';
   document.getElementById('clearBtn').style.display = 'none';
@@ -485,7 +490,8 @@ window._openReminder = id => {
   const n = notes.find(n=>n.id===id);
   document.getElementById('modalTitle').textContent = '設定提醒';
   document.getElementById('textRow').style.display = 'none';
-  document.getElementById('modalTime').value = n&&n.reminder ? n.reminder.slice(0,16) : '';
+  document.getElementById('modalTime') && (document.getElementById('modalTime').value = '');
+  setReminderValue(n&&n.reminder ? n.reminder : null);
   document.getElementById('modalLabel').value = n&&n.rlabel||'';
   document.getElementById('clearBtn').style.display = n&&n.reminder ? '' : 'none';
   document.getElementById('overlay').classList.add('show');
@@ -500,7 +506,7 @@ window.closeModal = () => {
 };
 
 window.saveModal = async () => {
-  const t = document.getElementById('modalTime').value;
+  const t = getReminderValue();
   const lbl = document.getElementById('modalLabel').value.trim();
   if (pendingAdd) {
     const txt = document.getElementById('modalText').value.trim();
@@ -517,6 +523,7 @@ window.saveModal = async () => {
 
 window.clearReminder = async () => {
   if (editingId) await fbUpdate(editingId, {reminder:null, rlabel:'', fired:false});
+  setReminderValue(null);
   closeModal();
 };
 
@@ -535,6 +542,49 @@ setInterval(() => {
 }, 30000);
 
 buildPicker();
+buildTimePicker();
+
+function buildTimePicker() {
+  const hourSel = document.getElementById('modalHour');
+  const minSel = document.getElementById('modalMin');
+  for (let h = 0; h < 24; h++) {
+    const o = document.createElement('option');
+    o.value = String(h).padStart(2,'0');
+    o.textContent = String(h).padStart(2,'0');
+    hourSel.appendChild(o);
+  }
+  for (let m = 0; m <= 55; m += 5) {
+    const o = document.createElement('option');
+    o.value = String(m).padStart(2,'0');
+    o.textContent = String(m).padStart(2,'0');
+    minSel.appendChild(o);
+  }
+}
+
+function getReminderValue() {
+  const d = document.getElementById('modalDate').value;
+  if (!d) return null;
+  const h = document.getElementById('modalHour').value;
+  const m = document.getElementById('modalMin').value;
+  return `${d}T${h}:${m}`;
+}
+
+function setReminderValue(iso) {
+  if (!iso) {
+    document.getElementById('modalDate').value = '';
+    document.getElementById('modalHour').value = '09';
+    document.getElementById('modalMin').value = '00';
+    return;
+  }
+  const dt = new Date(iso);
+  const yyyy = dt.getFullYear();
+  const mm = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
+  document.getElementById('modalDate').value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('modalHour').value = String(dt.getHours()).padStart(2,'0');
+  const snapMin = Math.round(dt.getMinutes()/5)*5 % 60;
+  document.getElementById('modalMin').value = String(snapMin).padStart(2,'0');
+}
 </script>
 </body>
 </html>
